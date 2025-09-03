@@ -2,8 +2,9 @@ import { useState } from 'react'
 import LandingPage from './LandingPage'
 import AuthPage from './AuthPage'
 import BookLibrary from './BookLibrary'
+import ReadingPage from './ReadingPage'
 
-type Page = 'landing' | 'auth' | 'library'
+type Page = 'landing' | 'auth' | 'library' | 'reading'
 
 interface User {
   name: string
@@ -25,6 +26,7 @@ interface Book {
 export default function AppRouter() {
   const [currentPage, setCurrentPage] = useState<Page>('landing')
   const [user, setUser] = useState<User | null>(null)
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null)
 
   const handleGetStarted = () => {
     setCurrentPage('auth')
@@ -37,12 +39,18 @@ export default function AppRouter() {
 
   const handleLogout = () => {
     setUser(null)
+    setSelectedBook(null)
     setCurrentPage('landing')
   }
 
   const handleSelectBook = (book: Book) => {
-    // Handle book selection - could navigate to reading interface
-    console.log('Selected book:', book)
+    setSelectedBook(book)
+    setCurrentPage('reading')
+  }
+
+  const handleBackToLibrary = () => {
+    setSelectedBook(null)
+    setCurrentPage('library')
   }
 
   switch (currentPage) {
@@ -58,6 +66,17 @@ export default function AppRouter() {
           user={user} 
           onSelectBook={handleSelectBook}
           onLogout={handleLogout} 
+        />
+      ) : (
+        <LandingPage onGetStarted={handleGetStarted} />
+      )
+    
+    case 'reading':
+      return user && selectedBook ? (
+        <ReadingPage 
+          book={selectedBook}
+          user={user}
+          onBackToLibrary={handleBackToLibrary}
         />
       ) : (
         <LandingPage onGetStarted={handleGetStarted} />
