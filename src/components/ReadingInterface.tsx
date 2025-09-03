@@ -9,6 +9,7 @@ interface ReadingSettings {
   highlightColor: string
   speechRate: number
   speechPitch: number
+  selectedVoice: string
 }
 
 export default function ReadingInterface() {
@@ -17,6 +18,8 @@ export default function ReadingInterface() {
   const [currentWordIndex, setCurrentWordIndex] = useState(-1)
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(-1)
   const [progress, setProgress] = useState(0)
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [currentLanguage, setCurrentLanguage] = useState<'en' | 'sw'>('en')
   const [settings, setSettings] = useState<ReadingSettings>({
     fontSize: 18,
     fontFamily: 'OpenDyslexic, Arial, sans-serif',
@@ -25,39 +28,85 @@ export default function ReadingInterface() {
     textColor: '#2d3748',
     highlightColor: '#fbbf24',
     speechRate: 0.8,
-    speechPitch: 1.0
+    speechPitch: 1.0,
+    selectedVoice: ''
   })
 
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null)
   const textRef = useRef<HTMLDivElement>(null)
 
+  // Load available voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = speechSynthesis.getVoices()
+      setAvailableVoices(voices)
+      
+      // Try to find a good default voice (Kiswahili first, then British English, South African, etc.)
+      const preferredVoices = voices.filter(voice => 
+        voice.lang.includes('sw') || // Kiswahili
+        voice.lang.includes('en-GB') || // British English
+        voice.lang.includes('en-ZA') || // South African English
+        voice.lang.includes('en-AU') || // Australian English
+        voice.lang.includes('en-') // Any English
+      )
+      
+      if (preferredVoices.length > 0 && !settings.selectedVoice) {
+        setSettings(prev => ({ ...prev, selectedVoice: preferredVoices[0].name }))
+      }
+    }
+
+    loadVoices()
+    speechSynthesis.onvoiceschanged = loadVoices
+  }, [])
+
   // Sample story content - in production, this would come from your backend
   const storyContent = {
-    title: "The Clever Hare and the Tortoise",
-    subtitle: "A Kenyan Folk Tale",
-    paragraphs: [
-      "Once upon a time, in the beautiful hills of Kenya, there lived a very fast hare and a slow but wise tortoise.",
-      "The hare was always boasting about how fast he could run. 'I am the fastest animal in all of Kenya!' he would say to anyone who would listen.",
-      "One sunny morning, the tortoise got tired of hearing the hare's boasts. 'Friend Hare,' said the tortoise calmly, 'would you like to race with me?'",
-      "The hare laughed so hard that he rolled on the ground. 'You want to race ME?' he giggled. 'This will be the easiest race I've ever won!'",
-      "All the animals of the forest gathered to watch the great race. The wise old elephant was chosen as the judge.",
-      "'Ready, set, GO!' trumpeted the elephant. The hare shot forward like lightning, while the tortoise began his slow, steady journey.",
-      "The hare was so far ahead that he decided to take a nap under a big baobab tree. 'I have plenty of time,' he thought sleepily.",
-      "Meanwhile, the tortoise kept moving forward, step by step, never stopping, never giving up.",
-      "When the hare woke up, he saw the tortoise crossing the finish line! All the animals cheered for the tortoise.",
-      "From that day on, the hare learned that being steady and determined is more important than being fast."
-    ]
+    en: {
+      title: "The Clever Hare and the Tortoise",
+      subtitle: "A Kenyan Folk Tale",
+      paragraphs: [
+        "Once upon a time, in the beautiful hills of Kenya, there lived a very fast hare and a slow but wise tortoise.",
+        "The hare was always boasting about how fast he could run. 'I am the fastest animal in all of Kenya!' he would say to anyone who would listen.",
+        "One sunny morning, the tortoise got tired of hearing the hare's boasts. 'Friend Hare,' said the tortoise calmly, 'would you like to race with me?'",
+        "The hare laughed so hard that he rolled on the ground. 'You want to race ME?' he giggled. 'This will be the easiest race I've ever won!'",
+        "All the animals of the forest gathered to watch the great race. The wise old elephant was chosen as the judge.",
+        "'Ready, set, GO!' trumpeted the elephant. The hare shot forward like lightning, while the tortoise began his slow, steady journey.",
+        "The hare was so far ahead that he decided to take a nap under a big baobab tree. 'I have plenty of time,' he thought sleepily.",
+        "Meanwhile, the tortoise kept moving forward, step by step, never stopping, never giving up.",
+        "When the hare woke up, he saw the tortoise crossing the finish line! All the animals cheered for the tortoise.",
+        "From that day on, the hare learned that being steady and determined is more important than being fast."
+      ]
+    },
+    sw: {
+      title: "Sungura Mjanja na Kobe",
+      subtitle: "Hadithi ya Kiafrika",
+      paragraphs: [
+        "Hapo zamani, katika milima mizuri ya Kenya, kuliishi sungura mwepesi sana na kobe mwenye busara lakini mpolepole.",
+        "Sungura alikuwa akijivunia kila wakati jinsi alivyoweza kukimbia kwa haraka. 'Mimi ni mnyama mwepesi zaidi katika Kenya yote!' alikuwa akisema kwa yeyote aliyetaka kusikiliza.",
+        "Asubuhi moja ya jua, kobe alichoka kusikia majivuno ya sungura. 'Rafiki Sungura,' alisema kobe kwa utulivu, 'ungependa kushindana nami?'",
+        "Sungura alicheka sana hata akajiviringisha chini. 'Unataka kushindana nami?' alicheka. 'Hii itakuwa mbio rahisi zaidi nilizoshinda!'",
+        "Wanyamapori wote wa msituni walikusanyika kuona mbio kuu. Tembo mzee mwenye busara alichaguliwa kuwa jaji.",
+        "'Tayari, weka, NENDA!' alipiga kelele tembo. Sungura aliruka mbele kama umeme, wakati kobe alianza safari yake ya polepole na ya kudumu.",
+        "Sungura alikuwa mbele sana hivi kwamba aliamua kulala chini ya mti mkubwa wa mbuyu. 'Nina wakati mwingi,' alifikiri akisinzia.",
+        "Wakati huo huo, kobe aliendelea kusonga mbele, hatua kwa hatua, bila kusimama, bila kukata tamaa.",
+        "Sungura alipozinduka, alimwona kobe akivuka mstari wa mwisho! Wanyamapori wote walimpongeza kobe.",
+        "Tangu siku hiyo, sungura alijifunza kwamba kuwa na uvumilivu na kujitolea ni muhimu zaidi kuliko kuwa mwepesi."
+      ]
+    }
   }
+
+  // Get current story based on language
+  const currentStory = storyContent[currentLanguage]
 
   // Split text into words for highlighting
   const getAllWords = () => {
-    return storyContent.paragraphs.flatMap((paragraph, pIndex) => 
-      paragraph.split(' ').map((word, wIndex) => ({
+    return currentStory.paragraphs.flatMap((paragraph: string, pIndex: number) => 
+      paragraph.split(' ').map((word: string, wIndex: number) => ({
         word: word.replace(/[.,!?]/g, ''),
         punctuation: word.match(/[.,!?]/)?.[0] || '',
         paragraphIndex: pIndex,
         wordIndex: wIndex,
-        globalIndex: storyContent.paragraphs.slice(0, pIndex).reduce((acc, p) => acc + p.split(' ').length, 0) + wIndex
+        globalIndex: currentStory.paragraphs.slice(0, pIndex).reduce((acc: number, p: string) => acc + p.split(' ').length, 0) + wIndex
       }))
     )
   }
@@ -66,8 +115,16 @@ export default function ReadingInterface() {
 
   const startReading = () => {
     if ('speechSynthesis' in window) {
-      const text = storyContent.paragraphs.join(' ')
+      const text = currentStory.paragraphs.join(' ')
       const utterance = new SpeechSynthesisUtterance(text)
+      
+      // Set voice if selected
+      if (settings.selectedVoice) {
+        const selectedVoice = availableVoices.find(voice => voice.name === settings.selectedVoice)
+        if (selectedVoice) {
+          utterance.voice = selectedVoice
+        }
+      }
       
       utterance.rate = settings.speechRate
       utterance.pitch = settings.speechPitch
@@ -203,6 +260,62 @@ export default function ReadingInterface() {
             </button>
           </div>
 
+          {/* Language Toggle */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Language:</span>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setCurrentLanguage('en')}
+                className={`px-3 py-1 rounded text-sm transition-colors ${
+                  currentLanguage === 'en' 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                English
+              </button>
+              <button
+                onClick={() => setCurrentLanguage('sw')}
+                className={`px-3 py-1 rounded text-sm transition-colors ${
+                  currentLanguage === 'sw' 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Kiswahili 🇰🇪
+              </button>
+            </div>
+          </div>
+
+          {/* Voice Selector */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Voice:</span>
+            <select
+              value={settings.selectedVoice}
+              onChange={(e) => setSettings(prev => ({ ...prev, selectedVoice: e.target.value }))}
+              className="text-sm border border-gray-300 rounded px-2 py-1 max-w-40"
+            >
+              <option value="">Default</option>
+              {availableVoices
+                .filter(voice => 
+                  currentLanguage === 'sw' 
+                    ? voice.lang.includes('sw')
+                    : voice.lang.includes('en')
+                )
+                .sort((a, b) => {
+                  // Prioritize Kiswahili voices first when sw is selected
+                  if (currentLanguage === 'sw' && a.lang.includes('sw') && !b.lang.includes('sw')) return -1;
+                  if (currentLanguage === 'sw' && !a.lang.includes('sw') && b.lang.includes('sw')) return 1;
+                  return a.name.localeCompare(b.name);
+                })
+                .map(voice => (
+                  <option key={voice.name} value={voice.name}>
+                    {voice.name} ({voice.lang}) {voice.lang.includes('sw') ? '🇰🇪' : ''}
+                  </option>
+                ))}
+            </select>
+          </div>
+
           {/* Color Theme Selector */}
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">Theme:</span>
@@ -251,7 +364,7 @@ export default function ReadingInterface() {
               fontFamily: settings.fontFamily 
             }}
           >
-            {storyContent.title}
+            {currentStory.title}
           </h1>
           <p 
             className="text-lg opacity-75"
@@ -261,12 +374,12 @@ export default function ReadingInterface() {
               fontFamily: settings.fontFamily 
             }}
           >
-            {storyContent.subtitle}
+            {currentStory.subtitle}
           </p>
         </div>
 
         <div ref={textRef} className="space-y-6">
-          {storyContent.paragraphs.map((paragraph, pIndex) => (
+          {currentStory.paragraphs.map((paragraph, pIndex) => (
             <p
               key={pIndex}
               style={{
@@ -277,8 +390,8 @@ export default function ReadingInterface() {
               }}
               className="leading-relaxed"
             >
-              {paragraph.split(' ').map((word, wIndex) => {
-                const globalIndex = storyContent.paragraphs.slice(0, pIndex).reduce((acc, p) => acc + p.split(' ').length, 0) + wIndex
+              {paragraph.split(' ').map((word: string, wIndex: number) => {
+                const globalIndex = currentStory.paragraphs.slice(0, pIndex).reduce((acc: number, p: string) => acc + p.split(' ').length, 0) + wIndex
                 const isCurrentWord = globalIndex === currentWordIndex
                 const cleanWord = word.replace(/[.,!?]/g, '')
                 const punctuation = word.match(/[.,!?]/)?.[0] || ''
@@ -306,9 +419,11 @@ export default function ReadingInterface() {
 
         {/* Reading Tips */}
         <div className="mt-12 p-6 bg-blue-50 rounded-xl">
-          <h3 className="text-lg font-semibold text-blue-800 mb-3">📚 Reading Tips</h3>
+          <h3 className="text-lg font-semibold text-blue-800 mb-3">Reading Tips</h3>
           <ul className="text-blue-700 space-y-2 text-sm">
+            <li>• Choose between English and Kiswahili stories</li>
             <li>• Use the play button to hear the story read aloud</li>
+            <li>• Choose a voice that sounds comfortable to you</li>
             <li>• Watch the highlighted words as they're being read</li>
             <li>• Adjust font size and colors to what feels comfortable</li>
             <li>• Take breaks whenever you need them</li>
