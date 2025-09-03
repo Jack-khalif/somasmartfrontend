@@ -1,8 +1,9 @@
 import LandingPage from './components/LandingPage'
+import ReadingInterface from './components/ReadingInterface'
 import './App.css'
 
 function App() {
-  return <LandingPage />
+  return <ReadingInterface />
 }
 
 export default App

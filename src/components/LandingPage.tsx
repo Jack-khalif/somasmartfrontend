@@ -20,7 +20,7 @@ export default function LandingPage() {
               <span className="text-white font-bold text-lg">S</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              SomaSmart
+              SomaBuddy
             </span>
           </div>
           <div className="hidden md:flex space-x-8">
@@ -65,7 +65,7 @@ export default function LandingPage() {
               <div className="bg-white rounded-2xl p-6 shadow-lg">
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xl">📚</span>
+                    <span className="text-white text-xl"></span>
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-800">Interactive Reading</h3>
@@ -98,7 +98,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center p-6 rounded-2xl hover:shadow-lg transition-shadow">
               <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-white text-2xl">🗣️</span>
+                <span className="text-white text-2xl"></span>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Text-to-Speech</h3>
               <p className="text-gray-600">
@@ -108,7 +108,7 @@ export default function LandingPage() {
 
             <div className="text-center p-6 rounded-2xl hover:shadow-lg transition-shadow">
               <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-white text-2xl">🎨</span>
+                <span className="text-white text-2xl"></span>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Visual Aids</h3>
               <p className="text-gray-600">
@@ -118,7 +118,7 @@ export default function LandingPage() {
 
             <div className="text-center p-6 rounded-2xl hover:shadow-lg transition-shadow">
               <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-white text-2xl">🎯</span>
+                <span className="text-white text-2xl"></span>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Personalized Learning</h3>
               <p className="text-gray-600">
