@@ -1,6 +1,10 @@
 import { useState } from 'react'
 
-export default function LandingPage() {
+interface LandingPageProps {
+  onGetStarted: () => void
+}
+
+export default function LandingPage({ onGetStarted }: LandingPageProps) {
   const [email, setEmail] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -51,7 +55,10 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200">
+            <button 
+              onClick={onGetStarted}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+            >
               Start Reading Now
             </button>
             <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-full text-lg font-semibold hover:border-blue-500 hover:text-blue-500 transition-all duration-200">

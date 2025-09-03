@@ -1,9 +1,8 @@
-import LandingPage from './components/LandingPage'
-import ReadingInterface from './components/ReadingInterface'
+import AppRouter from './components/AppRouter.tsx'
 import './App.css'
 
 function App() {
-  return <ReadingInterface />
+  return <AppRouter />
 }
 
 export default App
