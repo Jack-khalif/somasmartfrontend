@@ -2,7 +2,9 @@ import { useState } from 'react'
 import LandingPage from './LandingPage'
 import AuthPage from './AuthPage'
 import BookLibrary from './BookLibrary'
+ Features
 import ReadingInterface from './ReadingInterface'
+
 
 
 
@@ -75,8 +77,10 @@ export default function AppRouter() {
     
     case 'reading':
       return user && selectedBook ? (
+
         <ReadingInterface 
           
+
         />
       ) : (
         <LandingPage onGetStarted={handleGetStarted} />
