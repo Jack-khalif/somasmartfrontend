@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 
 interface ReadingSettings {
   fontSize: number
@@ -13,11 +13,13 @@ interface ReadingSettings {
 }
 
 export default function ReadingInterface() {
+  
   const [isPlaying, setIsPlaying] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [currentWordIndex, setCurrentWordIndex] = useState(-1)
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(-1)
   const [progress, setProgress] = useState(0)
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
   const [currentLanguage, setCurrentLanguage] = useState<'en' | 'sw'>('en')
   const [settings, setSettings] = useState<ReadingSettings>({
@@ -35,29 +37,44 @@ export default function ReadingInterface() {
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null)
   const textRef = useRef<HTMLDivElement>(null)
 
-  // Load available voices
+  // Check speech synthesis support and load voices
   useEffect(() => {
-    const loadVoices = () => {
-      const voices = speechSynthesis.getVoices()
-      setAvailableVoices(voices)
+    if ('speechSynthesis' in window) {
+      setIsSpeechSupported(true);
       
-      // Try to find a good default voice (Kiswahili first, then British English, South African, etc.)
-      const preferredVoices = voices.filter(voice => 
-        voice.lang.includes('sw') || // Kiswahili
-        voice.lang.includes('en-GB') || // British English
-        voice.lang.includes('en-ZA') || // South African English
-        voice.lang.includes('en-AU') || // Australian English
-        voice.lang.includes('en-') // Any English
-      )
-      
-      if (preferredVoices.length > 0 && !settings.selectedVoice) {
-        setSettings(prev => ({ ...prev, selectedVoice: preferredVoices[0].name }))
-      }
-    }
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          setAvailableVoices(voices);
+          
+          // Try to find a good default voice based on current language
+          const preferredVoices = voices.filter(voice => 
+            currentLanguage === 'sw' 
+              ? voice.lang.includes('sw')
+              : voice.lang.includes('en')
+          );
+          
+          if (preferredVoices.length > 0 && !settings.selectedVoice) {
+            setSettings(prev => ({ 
+              ...prev, 
+              selectedVoice: preferredVoices[0].name 
+            }));
+          }
+        }
+      };
 
-    loadVoices()
-    speechSynthesis.onvoiceschanged = loadVoices
-  }, [])
+      // Load voices immediately if available
+      loadVoices();
+      
+      // Some browsers need this event to load voices
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+      
+      // Cleanup
+      return () => {
+        window.speechSynthesis.onvoiceschanged = null;
+      };
+    }
+  }, [currentLanguage]);
 
   // Sample story content - in production, this would come from your backend
   const storyContent = {
@@ -96,86 +113,164 @@ export default function ReadingInterface() {
   }
 
   // Get current story based on language
-  const currentStory = storyContent[currentLanguage]
-
-  // Split text into words for highlighting
-  const getAllWords = () => {
-    return currentStory.paragraphs.flatMap((paragraph: string, pIndex: number) => 
-      paragraph.split(' ').map((word: string, wIndex: number) => ({
-        word: word.replace(/[.,!?]/g, ''),
-        punctuation: word.match(/[.,!?]/)?.[0] || '',
-        paragraphIndex: pIndex,
-        wordIndex: wIndex,
-        globalIndex: currentStory.paragraphs.slice(0, pIndex).reduce((acc: number, p: string) => acc + p.split(' ').length, 0) + wIndex
-      }))
-    )
-  }
-
-  const allWords = getAllWords()
+  const currentStory = storyContent[currentLanguage];
+  
+  // Generate a flat list of all words with their positions
+  const allWords = useMemo(() => {
+    const words: Array<{
+      word: string;
+      punctuation: string;
+      paragraphIndex: number;
+      wordIndex: number;
+      globalIndex: number;
+      startIndex: number;
+    }> = [];
+    
+    currentStory.paragraphs.forEach((paragraph: string, pIndex: number) => {
+      const wordList = paragraph.split(/(\s+)/).filter(chunk => chunk.trim().length > 0);
+      let currentIndex = 0;
+      
+      wordList.forEach((word, wIndex) => {
+        const cleanWord = word.replace(/[.,!?]/g, '');
+        const punctuation = word.match(/[.,!?]/)?.[0] || '';
+        const globalIndex = words.length;
+        
+        words.push({
+          word: cleanWord,
+          punctuation,
+          paragraphIndex: pIndex,
+          wordIndex: wIndex,
+          globalIndex,
+          startIndex: currentIndex
+        });
+        
+        currentIndex += word.length;
+      });
+    });
+    
+    return words;
+  }, [currentStory, currentLanguage]);
+  
+  // Reset reading when language changes
+  useEffect(() => {
+    stopReading();
+  }, [currentLanguage]);
 
   const startReading = () => {
-    if ('speechSynthesis' in window) {
-      const text = currentStory.paragraphs.join(' ')
-      const utterance = new SpeechSynthesisUtterance(text)
-      
-      // Set voice if selected
-      if (settings.selectedVoice) {
-        const selectedVoice = availableVoices.find(voice => voice.name === settings.selectedVoice)
-        if (selectedVoice) {
-          utterance.voice = selectedVoice
-        }
-      }
-      
-      utterance.rate = settings.speechRate
-      utterance.pitch = settings.speechPitch
-      utterance.volume = 1
-
-      let wordIndex = 0
-      const words = text.split(' ')
-
-      utterance.onboundary = (event) => {
-        if (event.name === 'word') {
-          setCurrentWordIndex(wordIndex)
-          setProgress((wordIndex / words.length) * 100)
-          wordIndex++
-        }
-      }
-
-      utterance.onend = () => {
-        setIsPlaying(false)
-        setIsPaused(false)
-        setCurrentWordIndex(-1)
-        setProgress(100)
-      }
-
-      speechRef.current = utterance
-      speechSynthesis.speak(utterance)
-      setIsPlaying(true)
-      setIsPaused(false)
+    if (!isSpeechSupported) {
+      console.error('Speech synthesis not supported in this browser');
+      return;
     }
-  }
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    const text = currentStory.paragraphs.join(' ');
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Set voice if selected
+    if (settings.selectedVoice) {
+      const selectedVoice = availableVoices.find(voice => voice.name === settings.selectedVoice);
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      } else if (availableVoices.length > 0) {
+        // Fallback to first available voice if selected voice not found
+        utterance.voice = availableVoices[0];
+      }
+    }
+    
+    utterance.rate = settings.speechRate;
+    utterance.pitch = settings.speechPitch;
+    utterance.volume = 1;
+
+    const words = text.split(/\s+/).filter(word => word.length > 0);
+    let wordIndex = 0;
+
+    // Reset states
+    setCurrentWordIndex(-1);
+    setProgress(0);
+    setIsPlaying(true);
+    setIsPaused(false);
+
+    // Handle word boundaries for highlighting
+    utterance.onboundary = (event) => {
+      if (event.charIndex !== undefined && event.name === 'word') {
+        const charIndex = event.charIndex;
+        let currentLength = 0;
+        
+        // Find which word we're currently on
+        for (let i = 0; i < words.length; i++) {
+          currentLength += words[i].length + 1; // +1 for the space
+          if (currentLength > charIndex) {
+            if (wordIndex !== i) {
+              wordIndex = i;
+              setCurrentWordIndex(wordIndex);
+              setProgress((wordIndex / words.length) * 100);
+            }
+            break;
+          }
+        }
+      }
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setIsPaused(false);
+      setProgress(100);
+      // Small delay before resetting the current word
+      setTimeout(() => setCurrentWordIndex(-1), 500);
+    };
+
+    utterance.onerror = (event) => {
+      console.error('SpeechSynthesis error:', event);
+      setIsPlaying(false);
+      setIsPaused(false);
+      setCurrentWordIndex(-1);
+    };
+
+    speechRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
 
   const pauseReading = () => {
-    if (speechSynthesis.speaking && !speechSynthesis.paused) {
-      speechSynthesis.pause()
-      setIsPaused(true)
+    if ('speechSynthesis' in window) {
+      if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+        window.speechSynthesis.pause();
+        setIsPaused(true);
+      }
     }
-  }
+  };
 
   const resumeReading = () => {
-    if (speechSynthesis.paused) {
-      speechSynthesis.resume()
-      setIsPaused(false)
+    if ('speechSynthesis' in window) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        setIsPaused(false);
+      } else if (!window.speechSynthesis.speaking && !isPlaying) {
+        // If nothing is speaking and we're not currently playing, restart from beginning
+        startReading();
+      }
     }
-  }
+  };
 
   const stopReading = () => {
-    speechSynthesis.cancel()
-    setIsPlaying(false)
-    setIsPaused(false)
-    setCurrentWordIndex(-1)
-    setProgress(0)
-  }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+    setIsPaused(false);
+    setCurrentWordIndex(-1);
+    setProgress(0);
+  };
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const adjustFontSize = (increment: number) => {
     setSettings(prev => ({
@@ -208,9 +303,11 @@ export default function ReadingInterface() {
               <button
                 onClick={startReading}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full flex items-center space-x-2 transition-colors"
+                disabled={!isSpeechSupported}
+                title={!isSpeechSupported ? 'Text-to-speech not supported in your browser' : 'Listen to the story'}
               >
-                <span>▶️</span>
-                <span>Start Reading</span>
+                <span>🔊</span>
+                <span>StartReading- Champion</span>
               </button>
             ) : (
               <div className="flex space-x-2">
@@ -379,42 +476,45 @@ export default function ReadingInterface() {
         </div>
 
         <div ref={textRef} className="space-y-6">
-          {currentStory.paragraphs.map((paragraph, pIndex) => (
-            <p
-              key={pIndex}
-              style={{
-                fontSize: `${settings.fontSize}px`,
-                fontFamily: settings.fontFamily,
-                lineHeight: settings.lineHeight,
-                color: settings.textColor
-              }}
-              className="leading-relaxed"
-            >
-              {paragraph.split(' ').map((word: string, wIndex: number) => {
-                const globalIndex = currentStory.paragraphs.slice(0, pIndex).reduce((acc: number, p: string) => acc + p.split(' ').length, 0) + wIndex
-                const isCurrentWord = globalIndex === currentWordIndex
-                const cleanWord = word.replace(/[.,!?]/g, '')
-                const punctuation = word.match(/[.,!?]/)?.[0] || ''
-                
-                return (
-                  <span key={wIndex}>
-                    <span
-                      className={`transition-all duration-200 ${isCurrentWord ? 'font-bold' : ''}`}
+          {currentStory.paragraphs.map((paragraph, pIndex) => {
+            // Get all words for this paragraph
+            const paragraphWords = allWords.filter(w => w.paragraphIndex === pIndex);
+            
+            return (
+              <p
+                key={pIndex}
+                style={{
+                  fontSize: `${settings.fontSize}px`,
+                  fontFamily: settings.fontFamily,
+                  lineHeight: settings.lineHeight,
+                  color: settings.textColor,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                }}
+                className="leading-relaxed"
+              >
+                {paragraphWords.map((wordObj, wIndex) => {
+                  const isCurrentWord = wordObj.globalIndex === currentWordIndex;
+                  
+                  return (
+                    <span 
+                      key={`${pIndex}-${wIndex}`}
+                      className={`inline-block transition-all duration-200 ${isCurrentWord ? 'font-bold' : ''}`}
                       style={{
                         backgroundColor: isCurrentWord ? settings.highlightColor : 'transparent',
                         padding: isCurrentWord ? '2px 4px' : '0',
-                        borderRadius: isCurrentWord ? '4px' : '0'
+                        borderRadius: isCurrentWord ? '4px' : '0',
+                        margin: '0 1px'
                       }}
                     >
-                      {cleanWord}
+                      {wordObj.word}
+                      {wordObj.punctuation}
                     </span>
-                    {punctuation}
-                    {wIndex < paragraph.split(' ').length - 1 ? ' ' : ''}
-                  </span>
-                )
-              })}
-            </p>
-          ))}
+                  );
+                })}
+              </p>
+            );
+          })}
         </div>
 
         {/* Reading Tips */}

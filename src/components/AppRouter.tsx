@@ -2,7 +2,11 @@ import { useState } from 'react'
 import LandingPage from './LandingPage'
 import AuthPage from './AuthPage'
 import BookLibrary from './BookLibrary'
-import ReadingPage from './ReadingPage'
+ Features
+import ReadingInterface from './ReadingInterface'
+
+
+
 
 type Page = 'landing' | 'auth' | 'library' | 'reading'
 
@@ -73,10 +77,10 @@ export default function AppRouter() {
     
     case 'reading':
       return user && selectedBook ? (
-        <ReadingPage 
-          book={selectedBook}
-          user={user}
-          onBackToLibrary={handleBackToLibrary}
+
+        <ReadingInterface 
+          
+
         />
       ) : (
         <LandingPage onGetStarted={handleGetStarted} />
