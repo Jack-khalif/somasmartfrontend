@@ -13,6 +13,7 @@ interface ReadingSettings {
 }
 
 export default function ReadingInterface() {
+  
   const [isPlaying, setIsPlaying] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [currentWordIndex, setCurrentWordIndex] = useState(-1)

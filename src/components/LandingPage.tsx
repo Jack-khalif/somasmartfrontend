@@ -182,8 +182,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 SomaSmart. Empowering different minds, one story at a time.</p>
-          </div>
+            <p>&copy; 2025 SomaBuddy Poowering different minds, one story at a time </p>     </div>
         </div>
       </footer>
     </div>
